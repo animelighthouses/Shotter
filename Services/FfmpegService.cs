@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Shotter.Services;
 
@@ -23,30 +24,13 @@ public class FfmpegService : IFfmpegService
                 CreateNoWindow = true
             };
 
-            // When subtitles are included, we call -i before -ss so that the subtitles are loaded correctly at the given timestamp.
-            // If subtitles are not included, -ss first before adding -i, which uses less resources and is faster.
             if (includeSubtitles)
             {
-                startInfo.ArgumentList.Add("-i");
-                startInfo.ArgumentList.Add(mediaPath);
-            }
-
-            startInfo.ArgumentList.Add("-ss");
-            startInfo.ArgumentList.Add(
-                positionSeconds.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture));
-            
-            if (includeSubtitles)
-            {
-                // TODO: only ASS subtitles seem to work. at least SRT and PGS did not.
-                startInfo.ArgumentList.Add("-vf");
-                startInfo.ArgumentList.Add(
-                        $"subtitles=filename='{mediaPath}':stream_index=0");
+                WithSubs(startInfo, positionSeconds, mediaPath);
             }
             else
             {
-                startInfo.ArgumentList.Add("-i");
-                startInfo.ArgumentList.Add(mediaPath);
+                WithoutSubs(startInfo, positionSeconds, mediaPath);
             }
             
             startInfo.ArgumentList.Add("-frames:v");
@@ -86,5 +70,31 @@ public class FfmpegService : IFfmpegService
             process?.Dispose();
             throw;
         }
+    }
+
+    private void WithSubs(ProcessStartInfo startInfo, double positionSeconds, string mediaPath)
+    {
+        startInfo.ArgumentList.Add("-ss");
+        startInfo.ArgumentList.Add(positionSeconds.ToString(CultureInfo.InvariantCulture));
+
+        startInfo.ArgumentList.Add("-copyts");
+
+        startInfo.ArgumentList.Add("-i");
+        startInfo.ArgumentList.Add(mediaPath);
+
+        startInfo.ArgumentList.Add("-vf");
+        startInfo.ArgumentList.Add(
+            $"subtitles=filename='{mediaPath}':si=0");
+    }
+
+    private void WithoutSubs(ProcessStartInfo startInfo, double positionSeconds, string mediaPath)
+    {
+        startInfo.ArgumentList.Add("-ss");
+        startInfo.ArgumentList.Add(
+            positionSeconds.ToString(
+                System.Globalization.CultureInfo.InvariantCulture));
+        
+        startInfo.ArgumentList.Add("-i");
+        startInfo.ArgumentList.Add(mediaPath);
     }
 }
