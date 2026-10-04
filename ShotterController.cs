@@ -44,13 +44,14 @@ public class ShotterController : ControllerBase
                 });
         }
 
-        var outputPath = _fileNameResolver.ResolveOutputPath(mediaInfo);
+        var output = _fileNameResolver.ResolveOutputPath(mediaInfo);
         
         var job = new ScreenshotJob(
             mediaInfo.MediaPath,
             mediaInfo.PositionSeconds,
             includeSubtitles,
-            outputPath);
+            Path.Combine(output.outputDirectory, output.outputFile),
+            output.outputDirectory);
         
         _logger.LogInformation(
             "Queuing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}",

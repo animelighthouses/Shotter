@@ -26,10 +26,11 @@ public sealed class ScreenshotBackgroundService : BackgroundService
                 var job = await _queue.DequeueAsync(stoppingToken);
 
                 _logger.LogInformation(
-                    "Processing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}",
+                    "Processing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}, output path {OutputPath}",
                     job.MediaPath,
                     job.PositionSeconds,
-                    job.IncludeSubtitles);
+                    job.IncludeSubtitles,
+                    job.OutputPath);
 
                 await ProcessAsync(job, stoppingToken);
                 
@@ -57,6 +58,9 @@ public sealed class ScreenshotBackgroundService : BackgroundService
         ScreenshotJob job,
         CancellationToken cancellationToken)
     {
+        // Burning subtitles is a longrunning process, so if something deletes the directory while jobs are still
+        // in queue, they will fail because of the missing directory.
+        Directory.CreateDirectory(job.OutPutDirectory);
         await _ffmpegService.TakeScreenshot(
             cancellationToken,
             job.PositionSeconds,

@@ -7,7 +7,8 @@ public sealed record ScreenshotJob(
     string MediaPath,
     double PositionSeconds,
     bool IncludeSubtitles,
-    string OutputPath);
+    string OutputPath,
+    string OutPutDirectory);
 
 public interface IScreenshotQueue
 {
@@ -15,12 +16,14 @@ public interface IScreenshotQueue
 
     ValueTask<ScreenshotJob> DequeueAsync(
         CancellationToken cancellationToken);
+
+    int Count { get; }
 }
 
 public sealed class ScreenshotQueue : IScreenshotQueue
 {
     private readonly Channel<ScreenshotJob> _channel;
-
+    
     public ScreenshotQueue(IOptions<ShotterOptions> options)
     {
         _channel = Channel.CreateBounded<ScreenshotJob>(
@@ -31,6 +34,8 @@ public sealed class ScreenshotQueue : IScreenshotQueue
                 SingleWriter = false
             });
     }
+    
+    public int Count => _channel.Reader.Count;
 
     public bool TryEnqueue(ScreenshotJob job)
     {
