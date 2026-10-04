@@ -4,7 +4,7 @@ namespace Shotter.Services;
 
 public class FfmpegService : IFfmpegService
 {
-    public async Task<(int exitCode, string stderr)> TakeScreenshot(
+    public async Task TakeScreenshot(
         CancellationToken cancellationToken,
         double positionSeconds,
         string mediaPath,
@@ -75,8 +75,11 @@ public class FfmpegService : IFfmpegService
 
             var stderr = await stderrTask;
             _ = await stdoutTask;
-            
-            return (process.ExitCode, stderr);
+
+            if (process.ExitCode != 0)
+            {
+                throw new Exception(stderr);
+            }
         }
         catch
         {

@@ -8,18 +8,20 @@ using Microsoft.AspNetCore.Mvc;
 public class ShotterController : ControllerBase
 {
     private readonly ILogger<ShotterController> _logger;
-    private const string ScreenshotDirectory = "/screenshots";
-    private const string ShowsDirectory = "shows";
-    private const string MoviesDirectory = "movies";
 
-    private readonly IFfmpegService _ffmpegService;
     private readonly IJellyfinService _jellyfinService;
+    private readonly IScreenshotQueue _screenshotQueue;
+    private readonly IFileNameResolver _fileNameResolver;
 
-    public ShotterController(IFfmpegService ffmpegService, IJellyfinService jellyfinService, ILogger<ShotterController> logger)
+    public ShotterController(
+        IJellyfinService jellyfinService, 
+        ILogger<ShotterController> logger, 
+        IScreenshotQueue screenshotQueue, IFileNameResolver fileNameResolver)
     {
-        _ffmpegService = ffmpegService;
         _jellyfinService = jellyfinService;
         _logger = logger;
+        _screenshotQueue = screenshotQueue;
+        _fileNameResolver = fileNameResolver;
     }
 
     [HttpGet("screenshot")]
@@ -33,6 +35,7 @@ public class ShotterController : ControllerBase
         }
         catch (Exception exception)
         {
+            _logger.LogError(1,   "Failed to query Jellyfin.", exception);
             return StatusCode(
                 500,
                 new
@@ -41,74 +44,35 @@ public class ShotterController : ControllerBase
                 });
         }
 
-        var outputPath = ResolveOutputPath(mediaInfo, out var episodeTimestamp);
-
+        var outputPath = _fileNameResolver.ResolveOutputPath(mediaInfo);
+        
+        var job = new ScreenshotJob(
+            mediaInfo.MediaPath,
+            mediaInfo.PositionSeconds,
+            includeSubtitles,
+            outputPath);
+        
         _logger.LogInformation(
-            "Taking a screenshot of {MediaInfoSeriesName} S{MediaInfoParentIndexNumber:D2}E{MediaInfoIndexNumber:D2} at {EpisodeTimestamp} with subtitles {IncludeSubtitles}", 
-            mediaInfo.SeriesName, 
-            mediaInfo.ParentIndexNumber, 
-            mediaInfo.IndexNumber, 
-            episodeTimestamp, 
-            includeSubtitles);
-
-        var (exitCode, stderr) = await _ffmpegService.TakeScreenshot(
-            cancellationToken, 
-            mediaInfo.PositionSeconds, 
-            mediaInfo.MediaPath, 
-            outputPath,
-            includeSubtitles);
-
-        if (exitCode != 0 || !System.IO.File.Exists(outputPath))
+            "Queuing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}",
+            job.MediaPath,
+            job.PositionSeconds,
+            job.IncludeSubtitles);
+        
+        if (_screenshotQueue.TryEnqueue(job))
         {
-            return StatusCode(
-                500,
-                new
-                {
-                    error = "ffmpeg failed to create the screenshot.",
-                    exitCode,
-                    details = stderr
-                });
+            return Accepted(new
+            {
+                message = "Screenshot queued."
+            });
         }
+        
+        _logger.LogWarning("Screenshot queue is full.");
+        return StatusCode( 
+            StatusCodes.Status429TooManyRequests,
+            new { error = "Screenshot queue is full" });
 
-        return Ok(new
-        {
-            file = outputPath,
-        });
-    }
-
-    private string ResolveOutputPath(JellyfinMediaInfo mediaInfo, out string videoTimeStamp)
-    {
-        videoTimeStamp = GetVideoTimestamp(mediaInfo.PositionSeconds);
-        
-        // TODO: filenames should escape all filesystem unfriendly characters.
-        if (mediaInfo.IsMovie)
-        {
-            var movieNamePath = mediaInfo.Name!.Replace(" ", "_");
-            var movieDirectory = Path.Combine(ScreenshotDirectory, MoviesDirectory, movieNamePath);
-            Directory.CreateDirectory(movieDirectory);
-            return Path.Combine(
-                movieDirectory,
-                $"{movieNamePath}_{videoTimeStamp}.jpg");
-        }
-        var seriesNamePath = mediaInfo.SeriesName!.Replace(" ", "_");
-        var seriesDirectory = Path.Combine(ScreenshotDirectory, ShowsDirectory, seriesNamePath);
-        
-        Directory.CreateDirectory(seriesDirectory);
-        
-        var outputPath = Path.Combine(
-            seriesDirectory,
-            $"{seriesNamePath}_S{mediaInfo.ParentIndexNumber:D2}E{mediaInfo.IndexNumber:D2}_{videoTimeStamp}.jpg");
-        return outputPath;
     }
 
 
-    private static string GetVideoTimestamp(double positionSeconds)
-    {
-        var time = TimeSpan.FromSeconds(positionSeconds);
-
-        return time.TotalHours >= 1
-            ? $"{(int)time.TotalHours:D2}h{time.Minutes:D2}m{time.Seconds:D2}s"
-            : $"{time.Minutes:D2}m{time.Seconds:D2}s";
-    }
 }
 
