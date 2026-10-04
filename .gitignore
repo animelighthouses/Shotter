@@ -1,0 +1,12 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+
+.idea/
+
+docker-compose.yml
+appsettings.Development.json
+deploy.sh
+Shotter.sln.DotSettings.user
