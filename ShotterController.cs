@@ -77,6 +77,10 @@ public class ShotterController : ControllerBase
 
     }
 
-
+    [HttpGet("is-processing")]
+    public IActionResult IsProcessingScreenshots()
+    {
+        return Ok(_screenshotQueue.IsProcessing);
+    }
 }
 

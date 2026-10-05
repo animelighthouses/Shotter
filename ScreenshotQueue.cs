@@ -20,12 +20,22 @@ public interface IScreenshotQueue
     ValueTask<ScreenshotJob> DequeueAsync(
         CancellationToken cancellationToken);
 
-    int Count { get; }
+    bool IsProcessing { get; }
+
+    void SetProcessing(bool processing);
 }
 
 public sealed class ScreenshotQueue : IScreenshotQueue
 {
     private readonly Channel<ScreenshotJob> _channel;
+    
+    private int _processing;
+    public bool IsProcessing => Volatile.Read(ref _processing) == 1;
+
+    public void SetProcessing(bool processing)
+    {
+        Interlocked.Exchange(ref _processing, processing ? 1 : 0);
+    }
     
     public ScreenshotQueue(IOptions<ShotterOptions> options)
     {

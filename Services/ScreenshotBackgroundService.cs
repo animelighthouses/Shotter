@@ -24,12 +24,12 @@ public sealed partial class ScreenshotBackgroundService : BackgroundService
             try
             {
                 var job = await _queue.DequeueAsync(stoppingToken);
+                _queue.SetProcessing(true);
 
                 LogProcesssing(job.MediaPath, job.PositionSeconds, job.IncludeSubtitles, job.SubtitlesCodec,
                     job.SubtitleIndex, job.ExternalSubtitlePath, job.OutputPath);
 
                 await ProcessAsync(job, stoppingToken);
-
                 LogProcessingFinished(job.MediaPath, job.PositionSeconds);
             }
             catch (OperationCanceledException)
@@ -42,6 +42,10 @@ public sealed partial class ScreenshotBackgroundService : BackgroundService
                 _logger.LogError(
                     ex,
                     "Screenshot job failed");
+            }
+            finally
+            {
+                _queue.SetProcessing(false);
             }
         }
     }
