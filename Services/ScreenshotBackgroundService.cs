@@ -1,6 +1,6 @@
 namespace Shotter.Services;
 
-public sealed class ScreenshotBackgroundService : BackgroundService
+public sealed partial class ScreenshotBackgroundService : BackgroundService
 {
     private readonly IScreenshotQueue _queue;
     private readonly ILogger<ScreenshotBackgroundService> _logger;
@@ -8,7 +8,7 @@ public sealed class ScreenshotBackgroundService : BackgroundService
 
     public ScreenshotBackgroundService(
         IScreenshotQueue queue,
-        ILogger<ScreenshotBackgroundService> logger, 
+        ILogger<ScreenshotBackgroundService> logger,
         IFfmpegService ffmpegService)
     {
         _queue = queue;
@@ -25,20 +25,12 @@ public sealed class ScreenshotBackgroundService : BackgroundService
             {
                 var job = await _queue.DequeueAsync(stoppingToken);
 
-                _logger.LogInformation(
-                    "Processing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}, output path {OutputPath}",
-                    job.MediaPath,
-                    job.PositionSeconds,
-                    job.IncludeSubtitles,
-                    job.OutputPath);
+                LogProcesssing(job.MediaPath, job.PositionSeconds, job.IncludeSubtitles, job.SubtitlesCodec,
+                    job.SubtitleIndex, job.ExternalSubtitlePath, job.OutputPath);
 
                 await ProcessAsync(job, stoppingToken);
-                
-                _logger.LogInformation(
-                    "Finished processing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}",
-                    job.MediaPath,
-                    job.PositionSeconds,
-                    job.IncludeSubtitles);
+
+                LogProcessingFinished(job.MediaPath, job.PositionSeconds);
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)
@@ -58,7 +50,6 @@ public sealed class ScreenshotBackgroundService : BackgroundService
         ScreenshotJob job,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation($"External subtitles {job.SubtitlesCodec} {job.SubtitleIndex} {job.ExternalSubtitlePath}");
         // Burning subtitles is a longrunning process, so if something deletes the directory while jobs are still
         // in queue, they will fail because of the missing directory.
         Directory.CreateDirectory(job.OutPutDirectory);
@@ -72,4 +63,18 @@ public sealed class ScreenshotBackgroundService : BackgroundService
             job.SubtitlesCodec,
             job.ExternalSubtitlePath);
     }
+
+    [LoggerMessage(LogLevel.Information, "Processing screenshot job \n" +
+                                         "media path:{MediaPath} \n" +
+                                         "timestamp: {PositionSeconds}s \n" +
+                                         "subtitles: {IncludeSubtitles} \n" +
+                                         "subtitles codec:{SubtitlesCodec} \n" +
+                                         "subtitles index: {SubtitlesIndex} \n" +
+                                         "external subtitle path: {ExternalSubtitlePath} \n" +
+                                         "output path: {OutputPath}")]
+    partial void LogProcesssing(string mediaPath, double positionSeconds, bool includeSubtitles, string? subtitlesCodec,
+        int? subtitlesIndex, string? externalSubtitlePath, string? outputPath);
+
+    [LoggerMessage(LogLevel.Information, "Finished processing screenshot job for {MediaPath} at {PositionSeconds}s")]
+    partial void LogProcessingFinished(string mediaPath, double positionSeconds);
 }
