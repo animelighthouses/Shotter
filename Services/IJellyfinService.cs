@@ -19,4 +19,5 @@ public class JellyfinMediaInfo
     public string MediaPath { get; set; }
     public int? SubtitlesIndex { get; set; }
     public string? SubtitlesCodec { get; set; }
+    public string? ExternalSubtitlePath { get; set; }
 }

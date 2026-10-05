@@ -7,5 +7,6 @@ public interface IFfmpegService
         string outputPath,
         bool includeSubtitles,
         int? subtitlesIndex,
-        string? subtitlesCodec);
+        string? subtitlesCodec,
+        string? externalSubtitlePath);
 }

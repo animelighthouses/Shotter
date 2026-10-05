@@ -58,6 +58,7 @@ public sealed class ScreenshotBackgroundService : BackgroundService
         ScreenshotJob job,
         CancellationToken cancellationToken)
     {
+        _logger.LogInformation($"External subtitles {job.SubtitlesCodec} {job.SubtitleIndex} {job.ExternalSubtitlePath}");
         // Burning subtitles is a longrunning process, so if something deletes the directory while jobs are still
         // in queue, they will fail because of the missing directory.
         Directory.CreateDirectory(job.OutPutDirectory);
@@ -68,6 +69,7 @@ public sealed class ScreenshotBackgroundService : BackgroundService
             job.OutputPath,
             job.IncludeSubtitles,
             job.SubtitleIndex,
-            job.SubtitlesCodec);
+            job.SubtitlesCodec,
+            job.ExternalSubtitlePath);
     }
 }

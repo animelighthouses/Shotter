@@ -52,6 +52,7 @@ public class ShotterController : ControllerBase
             includeSubtitles,
             mediaInfo.SubtitlesIndex,
             mediaInfo.SubtitlesCodec,
+            mediaInfo.ExternalSubtitlePath,
             Path.Combine(output.outputDirectory, output.outputFile),
             output.outputDirectory);
         

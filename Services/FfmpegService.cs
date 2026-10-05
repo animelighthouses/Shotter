@@ -14,7 +14,8 @@ public class FfmpegService : IFfmpegService
         string outputPath,
         bool includeSubtitles,
         int? subtitlesIndex,
-        string? subtitlesCodec)
+        string? subtitlesCodec,
+        string? externalSubtitlePath)
     {
         Process? process = null;
         try
@@ -30,7 +31,7 @@ public class FfmpegService : IFfmpegService
 
             if (includeSubtitles)
             {
-                WithSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, subtitlesCodec);
+                WithSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, subtitlesCodec, externalSubtitlePath);
             }
             else
             {
@@ -81,7 +82,8 @@ public class FfmpegService : IFfmpegService
         double positionSeconds,
         string mediaPath,
         int? subtitlesIndex,
-        string? subtitlesCodec)
+        string? subtitlesCodec,
+        string? externalSubtitlePath)
     {
         // TODO: external subtitles.
         switch (subtitlesCodec?.ToLowerInvariant())
@@ -89,7 +91,7 @@ public class FfmpegService : IFfmpegService
             case "ssa":
             case "ass":
             case "subrip": // SRT
-                HandleAsslibSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex);
+                HandleAsslibSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, externalSubtitlePath);
                 break;
             case "pgssub":
                 HandlePgsSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex);
@@ -128,16 +130,21 @@ public class FfmpegService : IFfmpegService
         ProcessStartInfo startInfo,
         double positionSeconds,
         string mediaPath,
-        int? subtitlesIndex)
+        int? subtitlesIndex,
+        string? externalSubtitlePath)
     {
         startInfo.ArgumentList.Add("-ss");
         startInfo.ArgumentList.Add(positionSeconds.ToString(CultureInfo.InvariantCulture));
 
         startInfo.ArgumentList.Add("-copyts");
-
+        
+        startInfo.ArgumentList.Add("-i");
+        startInfo.ArgumentList.Add(mediaPath);
+        
         startInfo.ArgumentList.Add("-vf");
-        startInfo.ArgumentList.Add(
-            $"subtitles=filename='{mediaPath}':si={subtitlesIndex}");
+        startInfo.ArgumentList.Add(string.IsNullOrEmpty(externalSubtitlePath)
+            ? $"subtitles=filename='{mediaPath}':si={subtitlesIndex}"
+            : $"subtitles=filename='{externalSubtitlePath}'");
     }
 
     private static void WithoutSubs(ProcessStartInfo startInfo, double positionSeconds, string mediaPath)

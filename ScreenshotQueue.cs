@@ -9,6 +9,7 @@ public sealed record ScreenshotJob(
     bool IncludeSubtitles,
     int? SubtitleIndex,
     string? SubtitlesCodec,
+    string? ExternalSubtitlePath,
     string OutputPath,
     string OutPutDirectory);
 

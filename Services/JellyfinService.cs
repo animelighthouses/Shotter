@@ -139,11 +139,12 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
             IsMovie = IsMovie(session),
             Name = nowPlayingItem.Name,
             SubtitlesCodec = subtitles.codec,
-            SubtitlesIndex = subtitles.subtitleIndex
+            SubtitlesIndex = subtitles.subtitleIndex,
+            ExternalSubtitlePath = subtitles.subtitlePath
         };
     }
 
-    private (string? codec, int? subtitleIndex) GetSelectedSubtitles(JellyfinMediaSource? mediaSource, int? subtitleStreamIndex)
+    private (string? codec, int? subtitleIndex, string? subtitlePath) GetSelectedSubtitles(JellyfinMediaSource? mediaSource, int? subtitleStreamIndex)
     {
         var subtitleStream = mediaSource?.MediaStreams?
                 .Where(x => string.Equals(
@@ -158,7 +159,14 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
                 })
                 .FirstOrDefault();
 
-        return (subtitleStream?.stream.Codec, subtitleStream?.index);
+        string? path = null;
+
+        if (subtitleStream?.stream.IsExternal != null && subtitleStream?.stream.IsExternal.Value == true)
+        {
+            path = subtitleStream?.stream.Path;
+        }
+
+        return (subtitleStream?.stream.Codec, subtitleStream?.index, path);
     }
 
     private bool IsMovie(JellyfinSession session)
@@ -244,6 +252,9 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
 
         public bool? IsDefault { get; set; }
         public bool? IsForced { get; set; }
+        
+        public bool? IsExternal { get; set; } 
+        public string? Path { get; set; }
     }
 
 }
