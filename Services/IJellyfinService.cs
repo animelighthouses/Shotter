@@ -17,4 +17,6 @@ public class JellyfinMediaInfo
     public bool IsMovie { get; set; }
     public double PositionSeconds { get; set; }
     public string MediaPath { get; set; }
+    public int? SubtitlesIndex { get; set; }
+    public string? SubtitlesCodec { get; set; }
 }

@@ -66,6 +66,8 @@ public sealed class ScreenshotBackgroundService : BackgroundService
             job.PositionSeconds,
             job.MediaPath,
             job.OutputPath,
-            job.IncludeSubtitles);
+            job.IncludeSubtitles,
+            job.SubtitleIndex,
+            job.SubtitlesCodec);
     }
 }

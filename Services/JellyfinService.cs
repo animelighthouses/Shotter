@@ -127,6 +127,8 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
 
         var positionSeconds = positionTicks / 10_000_000.0;
 
+        var subtitles = GetSelectedSubtitles(mediaSource, session.PlayState?.SubtitleStreamIndex);
+
         return new JellyfinMediaInfo
         {
             MediaPath = mediaPath,
@@ -135,8 +137,28 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
             ParentIndexNumber = nowPlayingItem.ParentIndexNumber,
             SeriesName = nowPlayingItem.SeriesName,
             IsMovie = IsMovie(session),
-            Name = nowPlayingItem.Name
+            Name = nowPlayingItem.Name,
+            SubtitlesCodec = subtitles.codec,
+            SubtitlesIndex = subtitles.subtitleIndex
         };
+    }
+
+    private (string? codec, int? subtitleIndex) GetSelectedSubtitles(JellyfinMediaSource? mediaSource, int? subtitleStreamIndex)
+    {
+        var subtitleStream = mediaSource?.MediaStreams?
+                .Where(x => string.Equals(
+                    x.Type,
+                    "Subtitle",
+                    StringComparison.OrdinalIgnoreCase)
+                && x.Index == subtitleStreamIndex)
+                .Select((stream, index) => new
+                {
+                    stream,
+                    index
+                })
+                .FirstOrDefault();
+
+        return (subtitleStream?.stream.Codec, subtitleStream?.index);
     }
 
     private bool IsMovie(JellyfinSession session)
@@ -167,6 +189,7 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
         public string? MediaSourceId { get; set; }
 
         public string? PlayMethod { get; set; }
+        public int? SubtitleStreamIndex { get; set; }
     }
 
     private sealed class JellyfinNowPlayingItem
@@ -209,13 +232,18 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
 
         public List<JellyfinMediaStream>? MediaStreams { get; set; }
     }
-
+    
     private sealed class JellyfinMediaStream
     {
         public string? Codec { get; set; }
-
         public string? Type { get; set; }
-
         public int? Index { get; set; }
+
+        public string? Language { get; set; }
+        public string? DisplayTitle { get; set; }
+
+        public bool? IsDefault { get; set; }
+        public bool? IsForced { get; set; }
     }
+
 }
