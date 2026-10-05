@@ -2,7 +2,7 @@ namespace Shotter.Services;
 
 public interface IFileNameResolver
 {
-    (string outputDirectory, string outputFile) ResolveOutputPath(JellyfinMediaInfo mediaInfo);
+    (string outputDirectory, string outputFile) ResolveOutputPath(CurrentPlayback mediaInfo);
 }
 
 public class FileNameResolver : IFileNameResolver
@@ -11,7 +11,7 @@ public class FileNameResolver : IFileNameResolver
     private const string ShowsDirectory = "shows";
     private const string MoviesDirectory = "movies";
     
-    public (string outputDirectory, string outputFile) ResolveOutputPath(JellyfinMediaInfo mediaInfo)
+    public (string outputDirectory, string outputFile) ResolveOutputPath(CurrentPlayback mediaInfo)
     {
         var videoTimeStamp = GetVideoTimestamp(mediaInfo.PositionSeconds);
         

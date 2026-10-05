@@ -3,17 +3,17 @@ using Microsoft.Extensions.Options;
 
 namespace Shotter.Services;
 
-public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<ShotterOptions> options)
-    : IJellyfinService
+public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOptions<ShotterOptions> options)
+    : IPlaybackProvider
 {
-    private readonly string _jellyfinUrl = options.Value.JellyfinUrl;
-    private readonly string _apiKey = options.Value.JellyfinApiKey;
+    private readonly string _jellyfinUrl = options.Value.MediaServerUrl;
+    private readonly string _apiKey = options.Value.MediaServerApiKey;
 
-    private readonly string _userId = options.Value.JellyfinUserId;
+    private readonly string _userId = options.Value.MediaServerUserId;
     
     private readonly HttpClient _httpClient = httpClientFactory.CreateClient();
 
-    public async Task<JellyfinMediaInfo> GetPlaybackInformation(CancellationToken cancellationToken)
+    public async Task<CurrentPlayback> GetPlaybackInformation(CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
@@ -129,7 +129,7 @@ public class JellyfinService(IHttpClientFactory httpClientFactory, IOptions<Shot
 
         var subtitles = GetSelectedSubtitles(mediaSource, session.PlayState?.SubtitleStreamIndex);
 
-        return new JellyfinMediaInfo
+        return new CurrentPlayback
         {
             MediaPath = mediaPath,
             PositionSeconds = positionSeconds,

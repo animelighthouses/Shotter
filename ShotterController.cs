@@ -9,16 +9,16 @@ public class ShotterController : ControllerBase
 {
     private readonly ILogger<ShotterController> _logger;
 
-    private readonly IJellyfinService _jellyfinService;
+    private readonly IPlaybackProvider _playbackProvider;
     private readonly IScreenshotQueue _screenshotQueue;
     private readonly IFileNameResolver _fileNameResolver;
 
     public ShotterController(
-        IJellyfinService jellyfinService, 
+        IPlaybackProvider playbackProvider, 
         ILogger<ShotterController> logger, 
         IScreenshotQueue screenshotQueue, IFileNameResolver fileNameResolver)
     {
-        _jellyfinService = jellyfinService;
+        _playbackProvider = playbackProvider;
         _logger = logger;
         _screenshotQueue = screenshotQueue;
         _fileNameResolver = fileNameResolver;
@@ -28,10 +28,10 @@ public class ShotterController : ControllerBase
     public async Task<IActionResult> ScreenshotCurrentStream([FromQuery] bool includeSubtitles,
         CancellationToken cancellationToken)
     {
-        JellyfinMediaInfo mediaInfo;
+        CurrentPlayback mediaInfo;
         try
         {
-            mediaInfo= await _jellyfinService.GetPlaybackInformation(cancellationToken);
+            mediaInfo= await _playbackProvider.GetPlaybackInformation(cancellationToken);
         }
         catch (Exception exception)
         {
