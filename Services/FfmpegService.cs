@@ -17,67 +17,56 @@ public class FfmpegService : IFfmpegService
         string? subtitlesCodec,
         string? externalSubtitlePath)
     {
-        Process? process = null;
-        try
+        var startInfo = new ProcessStartInfo
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "ffmpeg",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            FileName = "ffmpeg",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
-            if (includeSubtitles)
-            {
-                WithSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, subtitlesCodec, externalSubtitlePath);
-            }
-            else
-            {
-                WithoutSubs(startInfo, positionSeconds, mediaPath);
-            }
-
-            startInfo.ArgumentList.Add("-frames:v");
-            startInfo.ArgumentList.Add("1");
-
-            startInfo.ArgumentList.Add("-q:v");
-            startInfo.ArgumentList.Add("2");
-
-            startInfo.ArgumentList.Add("-y");
-            startInfo.ArgumentList.Add(outputPath);
-
-            process = new Process
-            {
-                StartInfo = startInfo
-            };
-
-            process.Start();
-
-            var stderrTask = process.StandardError.ReadToEndAsync(
-                cancellationToken);
-
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(
-                cancellationToken);
-
-            await process.WaitForExitAsync(cancellationToken);
-
-            var stderr = await stderrTask;
-            _ = await stdoutTask;
-            
-            if (process.ExitCode != 0)
-            {
-                throw new Exception(stderr);
-            }
+        if (includeSubtitles)
+        {
+            WithSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, subtitlesCodec, externalSubtitlePath);
         }
-        catch
+        else
         {
-            process?.Dispose();
-            throw;
+            WithoutSubs(startInfo, positionSeconds, mediaPath);
+        }
+
+        startInfo.ArgumentList.Add("-frames:v");
+        startInfo.ArgumentList.Add("1");
+
+        startInfo.ArgumentList.Add("-q:v");
+        startInfo.ArgumentList.Add("2");
+
+        startInfo.ArgumentList.Add("-y");
+        startInfo.ArgumentList.Add(outputPath);
+
+        using var process = new Process();
+        process.StartInfo = startInfo;
+
+        process.Start();
+
+        var stderrTask = process.StandardError.ReadToEndAsync(
+            cancellationToken);
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(
+            cancellationToken);
+
+        await process.WaitForExitAsync(cancellationToken);
+
+        var stderr = await stderrTask;
+        _ = await stdoutTask;
+        
+        if (process.ExitCode != 0)
+        {
+            throw new Exception(stderr);
         }
     }
 
-    private void WithSubs(
+    private static void WithSubs(
         ProcessStartInfo startInfo,
         double positionSeconds,
         string mediaPath,
@@ -85,7 +74,6 @@ public class FfmpegService : IFfmpegService
         string? subtitlesCodec,
         string? externalSubtitlePath)
     {
-        // TODO: external subtitles.
         switch (subtitlesCodec?.ToLowerInvariant())
         {
             case "ssa":
