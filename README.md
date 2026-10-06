@@ -17,7 +17,7 @@ services:
     environment:
       MediaServerUrl: # Your Media server url
       MediaServerApiKey: # Your media server API key
-      MediaServerUserId: # Your user id for Jellyfin or username for plex
+      MediaServerUserId: # Optional, user id for Jellyfin or username for plex. Used to specify the user whose activity will be screenshotted
       MediaServerType: # Jellyfin or Plex, removing this defaults to Jellyfin 
     volumes:
       - ./screenshots:/screenshots

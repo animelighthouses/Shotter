@@ -9,7 +9,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
     private readonly string _jellyfinUrl = options.Value.MediaServerUrl;
     private readonly string _apiKey = options.Value.MediaServerApiKey;
 
-    private readonly string _userId = options.Value.MediaServerUserId;
+    private readonly string? _userId = options.Value.MediaServerUserId;
     
     private readonly HttpClient _httpClient = httpClientFactory.CreateClient();
 
@@ -56,7 +56,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
         // Find the session belonging to our hardcoded user
         // that is currently playing something.
         var session = sessions.FirstOrDefault(s =>
-            s.UserId == _userId &&
+            (string.IsNullOrEmpty(_userId) || s.UserId == _userId) &&
             s.NowPlayingItem != null &&
             s.PlayState != null &&
             s.PlayState.PositionTicks.HasValue);

@@ -10,7 +10,7 @@ public class PlexPlaybackProvider(
 {
     private readonly string _plexUrl = options.Value.MediaServerUrl;
     private readonly string _apiKey = options.Value.MediaServerApiKey;
-    private readonly string _userName = options.Value.MediaServerUserId;
+    private readonly string? _userName = options.Value.MediaServerUserId;
 
     private readonly HttpClient _httpClient =
         httpClientFactory.CreateClient();
@@ -57,7 +57,7 @@ public class PlexPlaybackProvider(
                 cancellationToken);
 
         var session = responseData?.MediaContainer?.Metadata?
-            .FirstOrDefault(x => string.Equals(
+            .FirstOrDefault(x => string.IsNullOrEmpty(_userName) || string.Equals(
                 x.User?.Title,
                 _userName,
                 StringComparison.OrdinalIgnoreCase));
