@@ -32,14 +32,8 @@ builder.Services
     .AddTransient<IFileNameResolver, FileNameResolver>();
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 app.MapControllers();
 

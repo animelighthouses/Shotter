@@ -19,15 +19,13 @@ ARG BUILD_CONFIGURATION=Release
 
 WORKDIR /src
 
-COPY ["Shotter.csproj", "./"]
+COPY ["Shotter.Api/Shotter.Api.csproj", "Shotter.Api/"]
 
-RUN dotnet restore "Shotter.csproj"
+RUN dotnet restore "Shotter.Api/Shotter.Api.csproj"
 
 COPY . .
 
-WORKDIR "/src/"
-
-RUN dotnet build "./Shotter.csproj" \
+RUN dotnet build "Shotter.Api/Shotter.Api.csproj" \
     -c $BUILD_CONFIGURATION \
     -o /app/build
 
@@ -36,7 +34,7 @@ FROM build AS publish
 
 ARG BUILD_CONFIGURATION=Release
 
-RUN dotnet publish "./Shotter.csproj" \
+RUN dotnet publish "Shotter.Api/Shotter.Api.csproj" \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
     /p:UseAppHost=false
@@ -48,4 +46,4 @@ WORKDIR /app
 
 COPY --from=publish /app/publish .
 
-ENTRYPOINT ["dotnet", "Shotter.dll"]
+ENTRYPOINT ["dotnet", "Shotter.Api.dll"]
