@@ -35,7 +35,7 @@ public class ShotterController : ControllerBase
         }
         catch (Exception exception)
         {
-            _logger.LogError(1,   "Failed to query Jellyfin.", exception);
+            _logger.LogError(exception, "Failed to query media info.");
             return StatusCode(
                 500,
                 new
