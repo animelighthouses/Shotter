@@ -5,25 +5,14 @@ using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api")]
-public class ShotterController : ControllerBase
+public class ShotterController(
+    IPlaybackProvider playbackProvider,
+    ILogger<ShotterController> logger,
+    IScreenshotQueue screenshotQueue,
+    IFileNameResolver fileNameResolver,
+    INotificationService notificationService)
+    : ControllerBase
 {
-    private readonly ILogger<ShotterController> _logger;
-
-    private readonly IPlaybackProvider _playbackProvider;
-    private readonly IScreenshotQueue _screenshotQueue;
-    private readonly IFileNameResolver _fileNameResolver;
-
-    public ShotterController(
-        IPlaybackProvider playbackProvider, 
-        ILogger<ShotterController> logger, 
-        IScreenshotQueue screenshotQueue, IFileNameResolver fileNameResolver)
-    {
-        _playbackProvider = playbackProvider;
-        _logger = logger;
-        _screenshotQueue = screenshotQueue;
-        _fileNameResolver = fileNameResolver;
-    }
-
     [HttpGet("screenshot")]
     public async Task<IActionResult> ScreenshotCurrentStream([FromQuery] bool includeSubtitles,
         CancellationToken cancellationToken)
@@ -31,11 +20,11 @@ public class ShotterController : ControllerBase
         CurrentPlayback mediaInfo;
         try
         {
-            mediaInfo= await _playbackProvider.GetPlaybackInformation(cancellationToken);
+            mediaInfo= await playbackProvider.GetPlaybackInformation(cancellationToken);
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to query media info.");
+            logger.LogError(exception, "Failed to query media info.");
             return StatusCode(
                 500,
                 new
@@ -44,7 +33,7 @@ public class ShotterController : ControllerBase
                 });
         }
 
-        var output = _fileNameResolver.ResolveOutputPath(mediaInfo);
+        var output = fileNameResolver.ResolveOutputPath(mediaInfo);
         
         var job = new ScreenshotJob(
             mediaInfo.MediaPath,
@@ -56,13 +45,13 @@ public class ShotterController : ControllerBase
             Path.Combine(output.outputDirectory, output.outputFile),
             output.outputDirectory);
         
-        _logger.LogInformation(
+        logger.LogInformation(
             "Queuing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}",
             job.MediaPath,
             job.PositionSeconds,
             job.IncludeSubtitles);
         
-        if (_screenshotQueue.TryEnqueue(job))
+        if (screenshotQueue.TryEnqueue(job))
         {
             return Accepted(new
             {
@@ -70,7 +59,7 @@ public class ShotterController : ControllerBase
             });
         }
         
-        _logger.LogWarning("Screenshot queue is full.");
+        logger.LogWarning("Screenshot queue is full.");
         return StatusCode( 
             StatusCodes.Status429TooManyRequests,
             new { error = "Screenshot queue is full" });
@@ -80,7 +69,18 @@ public class ShotterController : ControllerBase
     [HttpGet("is-processing")]
     public IActionResult IsProcessingScreenshots()
     {
-        return Ok(_screenshotQueue.IsProcessing);
+        return Ok(screenshotQueue.IsProcessing);
+    }
+
+    [HttpGet("test-notification")]
+    public IActionResult TestNotification()
+    {
+        if (notificationService is NoopNotificationService)
+        {
+            return BadRequest("You have not configured a notification service.");
+        }
+        notificationService.SendNotification("This is a test notification.", CancellationToken.None);
+        return Accepted();
     }
 }
 

@@ -1,30 +1,22 @@
 namespace Shotter.Services;
 
-public sealed partial class ScreenshotBackgroundService : BackgroundService
+public sealed partial class ScreenshotBackgroundService(
+    IScreenshotQueue queue,
+    ILogger<ScreenshotBackgroundService> logger,
+    IFfmpegService ffmpegService,
+    INotificationService notificationService)
+    : BackgroundService
 {
-    private readonly IScreenshotQueue _queue;
-    private readonly ILogger<ScreenshotBackgroundService> _logger;
-    private readonly IFfmpegService _ffmpegService;
-
-    public ScreenshotBackgroundService(
-        IScreenshotQueue queue,
-        ILogger<ScreenshotBackgroundService> logger,
-        IFfmpegService ffmpegService)
-    {
-        _queue = queue;
-        _logger = logger;
-        _ffmpegService = ffmpegService;
-    }
-
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            ScreenshotJob? job = null;
             try
             {
-                var job = await _queue.DequeueAsync(stoppingToken);
-                _queue.SetProcessing(true);
+                job = await queue.DequeueAsync(stoppingToken);
+                queue.SetProcessing(true);
 
                 LogProcesssing(job.MediaPath, job.PositionSeconds, job.IncludeSubtitles, job.SubtitlesCodec,
                     job.SubtitleIndex, job.ExternalSubtitlePath, job.OutputPath);
@@ -39,13 +31,15 @@ public sealed partial class ScreenshotBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(
+                await notificationService.SendNotification(
+                    $"Failed to process screenshot: {job?.MediaPath} at {job?.PositionSeconds}s.", stoppingToken);
+                logger.LogError(
                     ex,
                     "Screenshot job failed");
             }
             finally
             {
-                _queue.SetProcessing(false);
+                queue.SetProcessing(false);
             }
         }
     }
@@ -54,10 +48,8 @@ public sealed partial class ScreenshotBackgroundService : BackgroundService
         ScreenshotJob job,
         CancellationToken cancellationToken)
     {
-        // Burning subtitles is a longrunning process, so if something deletes the directory while jobs are still
-        // in queue, they will fail because of the missing directory.
         Directory.CreateDirectory(job.OutPutDirectory);
-        await _ffmpegService.TakeScreenshot(
+        await ffmpegService.TakeScreenshot(
             cancellationToken,
             job.PositionSeconds,
             job.MediaPath,
