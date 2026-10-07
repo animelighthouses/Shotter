@@ -1,4 +1,4 @@
-namespace Shotter;
+namespace Shotter.Core.Enums;
 
 public enum MediaServerType
 {

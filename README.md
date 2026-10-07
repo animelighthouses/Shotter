@@ -19,7 +19,7 @@ services:
       MediaServerApiKey: # Your media server API key
       MediaServerUserId: # Optional, user id for Jellyfin or username for plex. Used to specify the user whose activity will be screenshotted
       MediaServerType: # Jellyfin or Plex, removing this defaults to Jellyfin
-      NotificationService: # Optional, supported services: Ntfy
+      NotificationProvider: # Optional, supported providers: Ntfy
       Ntfy__Url: # Ntfy service url
       Ntfy__Topic: # The ntfy topic the notification will be sent
       Ntfy__AccessToken: # Optional, needed if the topic is protected

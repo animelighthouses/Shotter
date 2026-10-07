@@ -1,6 +1,9 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Shotter.Core.Configuration;
+using Shotter.Core.Interfaces;
 
-namespace Shotter.Services;
+namespace Shotter.Services.Notifications;
 
 public class NtfyService(IHttpClientFactory httpClientFactory, ILogger<NtfyService> logger, IOptions<NtfyOptions> options) : INotificationService
 {

@@ -1,4 +1,6 @@
-namespace Shotter.Services;
+using Shotter.Core.Interfaces;
+
+namespace Shotter.Services.Notifications;
 
 public class NoopNotificationService : INotificationService
 {

@@ -1,9 +1,7 @@
-namespace Shotter.Services;
+using Shotter.Core.Interfaces;
+using Shotter.Core.Models;
 
-public interface IFileNameResolver
-{
-    (string outputDirectory, string outputFile) ResolveOutputPath(CurrentPlayback mediaInfo);
-}
+namespace Shotter.Services;
 
 public class FileNameResolver : IFileNameResolver
 {

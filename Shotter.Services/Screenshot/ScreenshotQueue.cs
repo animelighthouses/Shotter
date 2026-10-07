@@ -1,29 +1,10 @@
-using Microsoft.Extensions.Options;
-
-namespace Shotter;
 using System.Threading.Channels;
+using Microsoft.Extensions.Options;
+using Shotter.Core.Configuration;
+using Shotter.Core.Interfaces;
+using Shotter.Core.Models;
 
-public sealed record ScreenshotJob(
-    string MediaPath,
-    double PositionSeconds,
-    bool IncludeSubtitles,
-    int? SubtitleIndex,
-    string? SubtitlesCodec,
-    string? ExternalSubtitlePath,
-    string OutputPath,
-    string OutPutDirectory);
-
-public interface IScreenshotQueue
-{
-    bool TryEnqueue(ScreenshotJob job);
-
-    ValueTask<ScreenshotJob> DequeueAsync(
-        CancellationToken cancellationToken);
-
-    bool IsProcessing { get; }
-
-    void SetProcessing(bool processing);
-}
+namespace Shotter.Services.Screenshot;
 
 public sealed class ScreenshotQueue : IScreenshotQueue
 {

@@ -1,5 +1,10 @@
-using Shotter;
+using Shotter.Core.Configuration;
+using Shotter.Core.Enums;
+using Shotter.Core.Interfaces;
 using Shotter.Services;
+using Shotter.Services.Notifications;
+using Shotter.Services.Playback;
+using Shotter.Services.Screenshot;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +23,7 @@ else
     builder.Services.AddTransient<IPlaybackProvider, PlexPlaybackProvider>();
 }
 
-if (builder.Configuration.GetValue<string>(nameof(ShotterOptions.NotificationService)) == "Ntfy")
+if (builder.Configuration.GetValue<NotificationProviderType?>(nameof(ShotterOptions.NotificationProvider)) == NotificationProviderType.Ntfy)
 {
     builder.Services.AddTransient<INotificationService, NtfyService>();
 }
@@ -28,7 +33,7 @@ else
 }
 
 builder.Services
-    .AddTransient<IFfmpegService, FfmpegService>()
+    .AddTransient<IScreenshotService, ScreenshotService>()
     .AddTransient<IFileNameResolver, FileNameResolver>();
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();

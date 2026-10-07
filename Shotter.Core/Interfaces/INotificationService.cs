@@ -1,4 +1,4 @@
-namespace Shotter.Services;
+namespace Shotter.Core.Interfaces;
 
 public interface INotificationService
 {

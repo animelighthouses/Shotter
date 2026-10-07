@@ -1,7 +1,11 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Shotter.Core.Configuration;
+using Shotter.Core.Interfaces;
+using Shotter.Core.Models;
 
-namespace Shotter.Services;
+namespace Shotter.Services.Playback;
 
 public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOptions<ShotterOptions> options)
     : IPlaybackProvider

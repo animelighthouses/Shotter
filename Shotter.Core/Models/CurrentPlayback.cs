@@ -1,9 +1,4 @@
-namespace Shotter.Services;
-
-public interface IPlaybackProvider
-{
-    Task<CurrentPlayback> GetPlaybackInformation(CancellationToken cancellationToken);
-}
+namespace Shotter.Core.Models;
 
 public class CurrentPlayback
 {

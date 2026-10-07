@@ -1,6 +1,6 @@
-namespace Shotter.Services;
+namespace Shotter.Core.Interfaces;
 
-public interface IFfmpegService
+public interface IScreenshotService
 {
     Task TakeScreenshot(CancellationToken cancellationToken, double positionSeconds,
         string mediaPath,

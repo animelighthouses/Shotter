@@ -1,9 +1,14 @@
-namespace Shotter.Services;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Shotter.Core.Interfaces;
+using Shotter.Core.Models;
+
+namespace Shotter.Services.Screenshot;
 
 public sealed partial class ScreenshotBackgroundService(
     IScreenshotQueue queue,
     ILogger<ScreenshotBackgroundService> logger,
-    IFfmpegService ffmpegService,
+    IScreenshotService screenshotService,
     INotificationService notificationService)
     : BackgroundService
 {
@@ -49,7 +54,7 @@ public sealed partial class ScreenshotBackgroundService(
         CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(job.OutPutDirectory);
-        await ffmpegService.TakeScreenshot(
+        await screenshotService.TakeScreenshot(
             cancellationToken,
             job.PositionSeconds,
             job.MediaPath,

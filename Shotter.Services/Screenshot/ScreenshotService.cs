@@ -1,9 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using Shotter.Core.Interfaces;
 
-namespace Shotter.Services;
+namespace Shotter.Services.Screenshot;
 
-public class FfmpegService : IFfmpegService
+public class ScreenshotService : IScreenshotService
 {
     private const int PreSeekInSeconds = 5;
     
