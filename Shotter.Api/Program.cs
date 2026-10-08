@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<ShotterOptions>(builder.Configuration);
 builder.Services.AddOptions<NtfyOptions>().BindConfiguration("Ntfy");
 
-builder.Services.AddSingleton<IScreenshotQueue, ScreenshotQueue>();
+builder.Services.AddSingleton<ICaptureQueue, CaptureQueue>();
 builder.Services.AddHostedService<ScreenshotBackgroundService>();
 
 if (builder.Configuration.GetValue<MediaServerType>(nameof(ShotterOptions.MediaServerType)) == MediaServerType.Jellyfin)
@@ -34,6 +34,7 @@ else
 
 builder.Services
     .AddTransient<IScreenshotService, ScreenshotService>()
+    .AddTransient<IScreenshotProcessor, ScreenshotProcessor>()
     .AddTransient<IFileNameResolver, FileNameResolver>();
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();

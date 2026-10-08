@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Shotter.Core.Exceptions;
 using Shotter.Core.Interfaces;
 using Shotter.Core.Models;
 using Shotter.Services.Notifications;
@@ -8,25 +9,28 @@ namespace Shotter.Api.Controllers;
 [ApiController]
 [Route("api")]
 public class ShotterController(
-    IPlaybackProvider playbackProvider,
-    ILogger<ShotterController> logger,
-    IScreenshotQueue screenshotQueue,
-    IFileNameResolver fileNameResolver,
-    INotificationService notificationService)
+    ICaptureQueue captureQueue,
+    INotificationService notificationService,
+    IScreenshotService screenshotService)
     : ControllerBase
 {
     [HttpGet("screenshot")]
     public async Task<IActionResult> ScreenshotCurrentStream([FromQuery] bool includeSubtitles,
         CancellationToken cancellationToken)
     {
-        CurrentPlayback mediaInfo;
+
         try
         {
-            mediaInfo= await playbackProvider.GetPlaybackInformation(cancellationToken);
+            await screenshotService.HandleScreenshotRequest(includeSubtitles, cancellationToken);
+        }
+        catch (CaptureQueueFullException exception)
+        {
+            return StatusCode( 
+                StatusCodes.Status429TooManyRequests,
+                new { error = exception.Message });
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to query media info.");
             return StatusCode(
                 500,
                 new
@@ -34,44 +38,14 @@ public class ShotterController(
                     error = exception.Message
                 });
         }
-
-        var output = fileNameResolver.ResolveOutputPath(mediaInfo);
         
-        var job = new ScreenshotJob(
-            mediaInfo.MediaPath,
-            mediaInfo.PositionSeconds,
-            includeSubtitles,
-            mediaInfo.SubtitlesIndex,
-            mediaInfo.SubtitlesCodec,
-            mediaInfo.ExternalSubtitlePath,
-            Path.Combine(output.outputDirectory, output.outputFile),
-            output.outputDirectory);
-        
-        logger.LogInformation(
-            "Queuing screenshot job for {MediaPath} at {PositionSeconds}s with subtitles {IncludeSubtitles}",
-            job.MediaPath,
-            job.PositionSeconds,
-            job.IncludeSubtitles);
-        
-        if (screenshotQueue.TryEnqueue(job))
-        {
-            return Accepted(new
-            {
-                message = "Screenshot queued."
-            });
-        }
-        
-        logger.LogWarning("Screenshot queue is full.");
-        return StatusCode( 
-            StatusCodes.Status429TooManyRequests,
-            new { error = "Screenshot queue is full" });
-
+        return Accepted();
     }
 
     [HttpGet("is-processing")]
     public IActionResult IsProcessingScreenshots()
     {
-        return Ok(screenshotQueue.IsProcessing);
+        return Ok(captureQueue.IsProcessing);
     }
 
     [HttpGet("test-notification")]

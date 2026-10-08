@@ -1,6 +1,6 @@
 namespace Shotter.Core.Models;
 
-public sealed record ScreenshotJob(
+public sealed record CaptureJob(
     string MediaPath,
     double PositionSeconds,
     bool IncludeSubtitles,

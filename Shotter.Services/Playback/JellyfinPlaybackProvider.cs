@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Shotter.Core.Configuration;
+using Shotter.Core.Exceptions;
 using Shotter.Core.Interfaces;
 using Shotter.Core.Models;
 
@@ -37,7 +38,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new Exception("Failed to retrieve Jellyfin session.");
+            throw new PlaybackProviderException("Failed to retrieve Jellyfin session.");
         }
 
         await using var responseStream =
@@ -54,7 +55,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
 
         if (sessions == null)
         {
-            throw new Exception("Jellyfin returned no session data.");
+            throw new PlaybackProviderException("Jellyfin returned no session data.");
         }
 
         // Find the session belonging to our hardcoded user
@@ -67,7 +68,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
 
         if (session == null)
         {
-            throw new Exception("The configured Jellyfin user is not currently playing anything.");
+            throw new PlaybackProviderException("The configured Jellyfin user is not currently playing anything.");
         }
 
         var itemId = session.NowPlayingItem!.Id;
@@ -107,7 +108,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
         if (playbackInfo?.MediaSources == null ||
             playbackInfo.MediaSources.Count == 0)
         {
-            throw new Exception("Jellyfin returned no media sources.");
+            throw new PlaybackProviderException("Jellyfin returned no media sources.");
         }
 
         var mediaSourceId = session.PlayState?.MediaSourceId;
@@ -120,7 +121,7 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
 
         if (mediaSource?.Path == null)
         {
-            throw new Exception("Could not determine the media file path.");
+            throw new PlaybackProviderException("Could not determine the media file path.");
         }
 
         var mediaPath = mediaSource.Path;

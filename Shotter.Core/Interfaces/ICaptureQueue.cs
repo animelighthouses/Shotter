@@ -2,11 +2,11 @@ using Shotter.Core.Models;
 
 namespace Shotter.Core.Interfaces;
 
-public interface IScreenshotQueue
+public interface ICaptureQueue
 {
-    bool TryEnqueue(ScreenshotJob job);
+    bool TryEnqueue(CaptureJob job);
 
-    ValueTask<ScreenshotJob> DequeueAsync(
+    ValueTask<CaptureJob> DequeueAsync(
         CancellationToken cancellationToken);
 
     bool IsProcessing { get; }

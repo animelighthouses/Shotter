@@ -7,10 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\Shotter.Core\Shotter.Core.csproj" />
       <ProjectReference Include="..\Shotter.Services\Shotter.Services.csproj" />
     </ItemGroup>

@@ -6,9 +6,9 @@ using Shotter.Core.Models;
 namespace Shotter.Services.Screenshot;
 
 public sealed partial class ScreenshotBackgroundService(
-    IScreenshotQueue queue,
+    ICaptureQueue queue,
     ILogger<ScreenshotBackgroundService> logger,
-    IScreenshotService screenshotService,
+    IScreenshotProcessor screenshotProcessor,
     INotificationService notificationService)
     : BackgroundService
 {
@@ -17,7 +17,7 @@ public sealed partial class ScreenshotBackgroundService(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            ScreenshotJob? job = null;
+            CaptureJob? job = null;
             try
             {
                 job = await queue.DequeueAsync(stoppingToken);
@@ -50,11 +50,11 @@ public sealed partial class ScreenshotBackgroundService(
     }
 
     private async Task ProcessAsync(
-        ScreenshotJob job,
+        CaptureJob job,
         CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(job.OutPutDirectory);
-        await screenshotService.TakeScreenshot(
+        await screenshotProcessor.TakeScreenshot(
             cancellationToken,
             job.PositionSeconds,
             job.MediaPath,
