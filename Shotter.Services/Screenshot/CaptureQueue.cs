@@ -29,8 +29,6 @@ public sealed class CaptureQueue : ICaptureQueue
             });
     }
     
-    public int Count => _channel.Reader.Count;
-
     public bool TryEnqueue(CaptureJob job)
     {
         return _channel.Writer.TryWrite(job);

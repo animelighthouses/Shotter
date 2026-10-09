@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Shotter.Core.Exceptions;
 using Shotter.Core.Interfaces;
-using Shotter.Core.Models;
 using Shotter.Services.Notifications;
 
 namespace Shotter.Api.Controllers;
