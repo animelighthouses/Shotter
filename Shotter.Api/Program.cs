@@ -1,3 +1,4 @@
+using Shotter.Api.Middleware;
 using Shotter.Core.Configuration;
 using Shotter.Core.Enums;
 using Shotter.Core.Interfaces;
@@ -41,6 +42,7 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.MapControllers();
 
 app.Run();

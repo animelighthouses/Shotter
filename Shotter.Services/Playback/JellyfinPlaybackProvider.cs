@@ -20,60 +20,45 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
 
     public async Task<CurrentPlayback> GetPlaybackInformation(CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"{_jellyfinUrl}/Sessions");
-
-        request.Headers.TryAddWithoutValidation(
-            "Authorization",
-            $"MediaBrowser Client=\"Shotter\", " +
-            $"Device=\"Server\", " +
-            $"DeviceId=\"Shotter\", " +
-            $"Version=\"1.0.0\", " +
-            $"Token=\"{_apiKey}\"");
-
-        using var response = await _httpClient.SendAsync(
-            request,
-            cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new PlaybackProviderException("Failed to retrieve Jellyfin session.");
-        }
-
+        using var response = await QueryJellyfin(cancellationToken);
+        
         await using var responseStream =
             await response.Content.ReadAsStreamAsync(cancellationToken);
 
-        var sessions =
-            await JsonSerializer.DeserializeAsync<List<JellyfinSession>>(
-                responseStream,
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                },
-                cancellationToken);
-
-        if (sessions == null)
-        {
-            throw new PlaybackProviderException("Jellyfin returned no session data.");
-        }
-
-        // Find the session belonging to our hardcoded user
-        // that is currently playing something.
-        var session = sessions.FirstOrDefault(s =>
-            (string.IsNullOrEmpty(_userId) || s.UserId == _userId) &&
-            s.NowPlayingItem != null &&
-            s.PlayState != null &&
-            s.PlayState.PositionTicks.HasValue);
-
-        if (session == null)
-        {
-            throw new PlaybackProviderException("The configured Jellyfin user is not currently playing anything.");
-        }
+        var session = await GetSession(cancellationToken, responseStream);
 
         var itemId = session.NowPlayingItem!.Id;
         var nowPlayingItem = session.NowPlayingItem!;
 
+        var mediaSource = await GetPlaybackMediaSource(cancellationToken, itemId, session);
+
+        var mediaPath = mediaSource.Path;
+
+        // Jellyfin stores PositionTicks as 100-nanosecond units.
+        // Convert to seconds for ffmpeg.
+        var positionTicks = session.PlayState!.PositionTicks!.Value;
+
+        var positionSeconds = positionTicks / 10_000_000.0;
+
+        var subtitles = GetSelectedSubtitles(mediaSource, session.PlayState?.SubtitleStreamIndex);
+
+        return new CurrentPlayback
+        {
+            MediaPath = mediaPath,
+            PositionSeconds = positionSeconds,
+            IndexNumber = nowPlayingItem.IndexNumber,
+            ParentIndexNumber = nowPlayingItem.ParentIndexNumber,
+            SeriesName = nowPlayingItem.SeriesName,
+            IsMovie = IsMovie(session),
+            Name = nowPlayingItem.Name,
+            SubtitlesCodec = subtitles.codec,
+            SubtitlesIndex = subtitles.subtitleIndex,
+            ExternalSubtitlePath = subtitles.subtitlePath
+        };
+    }
+
+    private async Task<JellyfinMediaSource> GetPlaybackMediaSource(CancellationToken cancellationToken, string? itemId, JellyfinSession session)
+    {
         using var playbackInfoRequest = new HttpRequestMessage(
             HttpMethod.Post,
             $"{_jellyfinUrl}/Items/{itemId}/PlaybackInfo");
@@ -119,34 +104,72 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
                                   x.Id.Equals(mediaSourceId, StringComparison.OrdinalIgnoreCase))
                           ?? playbackInfo.MediaSources.FirstOrDefault();
 
-        if (mediaSource?.Path == null)
+        return mediaSource?.Path == null ? throw new PlaybackProviderException("Could not determine the media file path.") : mediaSource;
+    }
+
+    private async Task<JellyfinSession> GetSession(CancellationToken cancellationToken, Stream responseStream)
+    {
+        var sessions =
+            await JsonSerializer.DeserializeAsync<List<JellyfinSession>>(
+                responseStream,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                },
+                cancellationToken);
+
+        if (sessions == null)
         {
-            throw new PlaybackProviderException("Could not determine the media file path.");
+            throw new PlaybackProviderException("Jellyfin returned no session data.");
         }
 
-        var mediaPath = mediaSource.Path;
+        // Find the session belonging to our hardcoded user
+        // that is currently playing something.
+        var session = sessions.FirstOrDefault(s =>
+            (string.IsNullOrEmpty(_userId) || s.UserId == _userId) &&
+            s.NowPlayingItem != null &&
+            s.PlayState != null &&
+            s.PlayState.PositionTicks.HasValue);
 
-        // Jellyfin stores PositionTicks as 100-nanosecond units.
-        // Convert to seconds for ffmpeg.
-        var positionTicks = session.PlayState!.PositionTicks!.Value;
+        return session ?? throw new PlaybackProviderException("The configured Jellyfin user is not currently playing anything.");
+    }
 
-        var positionSeconds = positionTicks / 10_000_000.0;
+    private async Task<HttpResponseMessage> QueryJellyfin(CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"{_jellyfinUrl}/Sessions");
 
-        var subtitles = GetSelectedSubtitles(mediaSource, session.PlayState?.SubtitleStreamIndex);
-
-        return new CurrentPlayback
+        request.Headers.TryAddWithoutValidation(
+            "Authorization",
+            $"MediaBrowser Client=\"Shotter\", " +
+            $"Device=\"Server\", " +
+            $"DeviceId=\"Shotter\", " +
+            $"Version=\"1.0.0\", " +
+            $"Token=\"{_apiKey}\"");
+        
+        try
         {
-            MediaPath = mediaPath,
-            PositionSeconds = positionSeconds,
-            IndexNumber = nowPlayingItem.IndexNumber,
-            ParentIndexNumber = nowPlayingItem.ParentIndexNumber,
-            SeriesName = nowPlayingItem.SeriesName,
-            IsMovie = IsMovie(session),
-            Name = nowPlayingItem.Name,
-            SubtitlesCodec = subtitles.codec,
-            SubtitlesIndex = subtitles.subtitleIndex,
-            ExternalSubtitlePath = subtitles.subtitlePath
-        };
+            var response = await _httpClient.SendAsync(
+                request,
+                cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                throw new PlaybackProviderConnectionException(
+                    $"Playback provider returned {(int)response.StatusCode} " +
+                    $"({response.StatusCode}). Response: {responseBody}");
+            }
+
+            return response;
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new PlaybackProviderConnectionException(
+                $"Could not connect to the playback provider: {exception.Message}");
+        }
     }
 
     private (string? codec, int? subtitleIndex, string? subtitlePath) GetSelectedSubtitles(JellyfinMediaSource? mediaSource, int? subtitleStreamIndex)

@@ -18,27 +18,7 @@ public class ShotterController(
     public async Task<IActionResult> ScreenshotCurrentStream([FromQuery] bool includeSubtitles,
         CancellationToken cancellationToken)
     {
-
-        try
-        {
-            await screenshotService.HandleScreenshotRequest(includeSubtitles, cancellationToken);
-        }
-        catch (CaptureQueueFullException exception)
-        {
-            return StatusCode( 
-                StatusCodes.Status429TooManyRequests,
-                new { error = exception.Message });
-        }
-        catch (Exception exception)
-        {
-            return StatusCode(
-                500,
-                new
-                {
-                    error = exception.Message
-                });
-        }
-        
+        await screenshotService.HandleScreenshotRequest(includeSubtitles, cancellationToken);
         return Accepted();
     }
 
@@ -49,13 +29,13 @@ public class ShotterController(
     }
 
     [HttpGet("test-notification")]
-    public IActionResult TestNotification()
+    public async Task<IActionResult> TestNotification()
     {
         if (notificationService is NoopNotificationService)
         {
             return BadRequest("You have not configured a notification service.");
         }
-        notificationService.SendNotification("This is a test notification.", CancellationToken.None);
+        await notificationService.SendNotification("This is a test notification.", CancellationToken.None);
         return Accepted();
     }
 }
