@@ -35,12 +35,12 @@ public sealed partial class ScreenshotBackgroundService(
                 break;
             }
             catch (Exception ex)
-            {
-                await notificationService.SendNotification(
-                    $"Failed to process screenshot: {job?.MediaPath} at {job?.PositionSeconds}s.", stoppingToken);
+            {                
                 logger.LogError(
                     ex,
                     "Screenshot job failed");
+                await notificationService.SendNotification(
+                    $"Failed to process screenshot: {job?.MediaPath} at {job?.PositionSeconds}s.", stoppingToken);
             }
             finally
             {

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shotter.Core.Configuration;
+using Shotter.Core.Exceptions;
 using Shotter.Core.Interfaces;
 
 namespace Shotter.Services.Notifications;
@@ -18,7 +19,7 @@ public class NtfyService(IHttpClientFactory httpClientFactory, ILogger<NtfyServi
         {
             if (string.IsNullOrEmpty(_ntfyServiceUrl) || string.IsNullOrEmpty(_ntfyTopic))
             {
-                throw new Exception("Url or topic missing.");
+                throw new NotificationException("Url or topic missing.");
             }
             
             using var request = new HttpRequestMessage(
@@ -40,11 +41,12 @@ public class NtfyService(IHttpClientFactory httpClientFactory, ILogger<NtfyServi
             await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            throw new Exception(error);
+            throw new NotificationException(error);
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Failed to publish notification to ntfy.");
+            throw;
         }
 
     }

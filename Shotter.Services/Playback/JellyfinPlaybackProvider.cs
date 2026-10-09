@@ -8,7 +8,9 @@ using Shotter.Core.Models;
 
 namespace Shotter.Services.Playback;
 
-public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOptions<ShotterOptions> options)
+public class JellyfinPlaybackProvider(
+    IHttpClientFactory httpClientFactory, 
+    IOptions<ShotterOptions> options)
     : IPlaybackProvider
 {
     private readonly string _jellyfinUrl = options.Value.MediaServerUrl;
@@ -153,22 +155,14 @@ public class JellyfinPlaybackProvider(IHttpClientFactory httpClientFactory, IOpt
             var response = await _httpClient.SendAsync(
                 request,
                 cancellationToken);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
-                throw new PlaybackProviderConnectionException(
-                    $"Playback provider returned {(int)response.StatusCode} " +
-                    $"({response.StatusCode}). Response: {responseBody}");
-            }
-
-            return response;
+            if (response.IsSuccessStatusCode) return response;
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new PlaybackProviderConnectionException(responseBody);
         }
         catch (HttpRequestException exception)
         {
-            throw new PlaybackProviderConnectionException(
-                $"Could not connect to the playback provider: {exception.Message}");
+            throw new PlaybackProviderConnectionException("Failed to connect to Jellyfin.", exception);
         }
     }
 
