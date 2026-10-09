@@ -2,15 +2,15 @@
 
 A HTTP server for screenshotting current session for Jellyfin and Plex.
 
-## Installation
+## Get started
 
-Build the docker image and load it in. The docker container should run on the same server as your media server, as it needs access to the same file paths.
+You can use Shotter with the docker compose file below.
 
 ```yml
 services:
   shotter:
     container_name: shotter
-    image: shotter:latest
+    image: ghcr.io/voidnyan/shotter:latest
     ports:
       - "8080:8080"
     user: "1000:1000"
