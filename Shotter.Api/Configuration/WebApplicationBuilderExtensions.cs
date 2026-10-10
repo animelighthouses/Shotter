@@ -14,6 +14,7 @@ public static class WebApplicationBuilderExtensions
         {
             builder.Services.Configure<ShotterOptions>(builder.Configuration);
             builder.Services.AddOptions<NtfyOptions>().BindConfiguration("Ntfy");
+            builder.Services.AddOptions<FfmpegOptions>().BindConfiguration("Ffmpeg");
             return builder;
         }
         

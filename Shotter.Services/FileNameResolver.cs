@@ -19,7 +19,7 @@ public class FileNameResolver : IFileNameResolver
             var movieNamePath = mediaInfo.Name!.Replace(" ", "_");
             var movieDirectory = Path.Combine(ScreenshotDirectory, MoviesDirectory, movieNamePath);
             Directory.CreateDirectory(movieDirectory);
-            return (movieDirectory, $"{movieNamePath}_{videoTimeStamp}.jpg");
+            return (movieDirectory, $"{movieNamePath}_{videoTimeStamp}");
         }
         var seriesNamePath = mediaInfo.SeriesName!.Replace(" ", "_");
         var seriesDirectory = Path.Combine(ScreenshotDirectory, ShowsDirectory, seriesNamePath);
@@ -27,7 +27,7 @@ public class FileNameResolver : IFileNameResolver
         Directory.CreateDirectory(seriesDirectory);
 
         return (seriesDirectory,
-            $"{seriesNamePath}_S{mediaInfo.ParentIndexNumber:D2}E{mediaInfo.IndexNumber:D2}_{videoTimeStamp}.jpg");
+            $"{seriesNamePath}_S{mediaInfo.ParentIndexNumber:D2}E{mediaInfo.IndexNumber:D2}_{videoTimeStamp}");
     }
 
 

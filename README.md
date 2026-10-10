@@ -4,7 +4,8 @@ A HTTP server for screenshotting current session for Jellyfin and Plex.
 
 ## Get started
 
-You can use Shotter with the docker compose file below.
+You can use Shotter with the docker compose file below. Optional lines can be removed or commented out.
+Ntfy configuration can be removed if NotificationProvider is not set to Ntfy.
 
 ```yml
 services:
@@ -23,6 +24,8 @@ services:
       Ntfy__Url: # Ntfy service url
       Ntfy__Topic: # The ntfy topic the notification will be sent
       Ntfy__AccessToken: # Optional, needed if the topic is protected
+      Ffmpeg__ScreenshotFileExtension: # Optional, defaults to jpg
+      Ffmpeg__ScreenshotQuality: #Optional, the value range depends on your file extension
     volumes:
       - ./screenshots:/screenshots
       - /path/to/media:/media:ro
