@@ -86,6 +86,8 @@ public class ScreenshotProcessor(IOptions<FfmpegOptions> options) : IScreenshotP
                 HandleAsslibSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, externalSubtitlePath);
                 break;
             case "pgssub":
+            case "pgs":
+            case "vobsub":
                 HandlePgsSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex);
                 break;
             default:
