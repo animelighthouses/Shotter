@@ -18,7 +18,7 @@ services:
     environment:
       MediaServerUrl: # Your Media server url
       MediaServerApiKey: # Your media server API key
-      MediaServerUserId: # Optional, user id for Jellyfin or username for plex. Used to specify the user whose activity will be screenshotted
+      MediaServerUserName: # Optional. Used to specify the user whose activity will be screenshotted
       MediaServerType: # Jellyfin or Plex, removing this defaults to Jellyfin
       NotificationProvider: # Optional, supported providers: Ntfy
       Ntfy__Url: # Ntfy service url
