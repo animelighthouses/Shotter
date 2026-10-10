@@ -83,6 +83,8 @@ public class ScreenshotProcessor : IScreenshotProcessor
                 HandleAsslibSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, externalSubtitlePath);
                 break;
             case "pgssub":
+            case "pgs": // Plex
+            case "vobsub":
                 HandlePgsSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex);
                 break;
             default:
