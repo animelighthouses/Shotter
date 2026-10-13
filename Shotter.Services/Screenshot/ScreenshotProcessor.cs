@@ -147,7 +147,7 @@ public class ScreenshotProcessor(IOptions<FfmpegOptions> options) : IScreenshotP
             $"[0:v:0][0:s:{subtitlesIndex}]overlay[overlaid];" +
             $"[overlaid]select='gte(t\\,{positionSeconds.ToString(CultureInfo.InvariantCulture)})'[selected]";
 
-        var resolutionFilter = await GetComplexResolutionFilter(request, mediaPath);
+        var resolutionFilter = await GetResolutionFilter(request, mediaPath);
 
         if (!string.IsNullOrEmpty(resolutionFilter))
             filter += $";[selected]{resolutionFilter}[out]";
@@ -215,12 +215,6 @@ public class ScreenshotProcessor(IOptions<FfmpegOptions> options) : IScreenshotP
     {
         var height = await GetResolutionHeight(request, mediaPath);
         return height.HasValue ? $"scale=-2:{height}:flags=lanczos" : string.Empty;
-    }
-
-    private async Task<string> GetComplexResolutionFilter(CaptureRequest request, string mediaPath)
-    {
-        var height = await GetResolutionHeight(request, mediaPath);
-        return height.HasValue ? $"scale=-2:{height}" : string.Empty;
     }
 
     private async Task<int?> GetResolutionHeight(CaptureRequest request, string mediaPath)
