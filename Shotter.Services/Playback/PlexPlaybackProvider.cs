@@ -14,7 +14,7 @@ public class PlexPlaybackProvider(
 {
     private readonly string _plexUrl = options.Value.MediaServerUrl;
     private readonly string _apiKey = options.Value.MediaServerApiKey;
-    private readonly string? _userName = options.Value.MediaServerUserId;
+    private readonly string? _userName = options.Value.MediaServerUserName;
 
     private readonly HttpClient _httpClient =
         httpClientFactory.CreateClient();

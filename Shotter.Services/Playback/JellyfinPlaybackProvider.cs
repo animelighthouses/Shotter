@@ -16,7 +16,7 @@ public class JellyfinPlaybackProvider(
     private readonly string _jellyfinUrl = options.Value.MediaServerUrl;
     private readonly string _apiKey = options.Value.MediaServerApiKey;
 
-    private readonly string? _userId = options.Value.MediaServerUserId;
+    private readonly string? _userName = options.Value.MediaServerUserName;
     
     private readonly HttpClient _httpClient = httpClientFactory.CreateClient();
 
@@ -75,7 +75,7 @@ public class JellyfinPlaybackProvider(
 
         var playbackInfoBody = new
         {
-            UserId = _userId,
+            session.UserId,
             AutoOpenLiveStream = true,
             IsPlayback = true
         };
@@ -125,10 +125,8 @@ public class JellyfinPlaybackProvider(
             throw new PlaybackProviderException("Jellyfin returned no session data.");
         }
 
-        // Find the session belonging to our hardcoded user
-        // that is currently playing something.
         var session = sessions.FirstOrDefault(s =>
-            (string.IsNullOrEmpty(_userId) || s.UserId == _userId) &&
+            (string.IsNullOrEmpty(_userName) || (s.UserName?.ToLowerInvariant()).Equals(_userName, StringComparison.InvariantCultureIgnoreCase)) &&
             s.NowPlayingItem != null &&
             s.PlayState != null &&
             s.PlayState.PositionTicks.HasValue);
@@ -202,6 +200,7 @@ public class JellyfinPlaybackProvider(
         public string? Id { get; set; }
 
         public string? UserId { get; set; }
+        public string? UserName { get; set; }
 
         public JellyfinPlayState? PlayState { get; set; }
 

@@ -1,19 +1,23 @@
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Extensions.Options;
+using Shotter.Core.Configuration;
 using Shotter.Core.Interfaces;
+using Shotter.Core.Models;
 
 namespace Shotter.Services.Screenshot;
 
-public class ScreenshotProcessor : IScreenshotProcessor
+public class ScreenshotProcessor(IOptions<FfmpegOptions> options) : IScreenshotProcessor
 {
     private const int PreSeekInSeconds = 5;
+    private readonly FfmpegOptions _options = options.Value;
     
     public async Task TakeScreenshot(
         CancellationToken cancellationToken,
         double positionSeconds,
         string mediaPath,
         string outputPath,
-        bool includeSubtitles,
+        CaptureRequest request,
         int? subtitlesIndex,
         string? subtitlesCodec,
         string? externalSubtitlePath)
@@ -27,23 +31,33 @@ public class ScreenshotProcessor : IScreenshotProcessor
             CreateNoWindow = true
         };
 
-        if (includeSubtitles)
+        if (request.IncludeSubtitles)
         {
-            WithSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, subtitlesCodec, externalSubtitlePath);
+            await WithSubs(
+                startInfo, 
+                request, 
+                positionSeconds,
+                mediaPath, 
+                subtitlesIndex, 
+                subtitlesCodec, 
+                externalSubtitlePath);
         }
         else
         {
-            WithoutSubs(startInfo, positionSeconds, mediaPath);
+            await WithoutSubs(
+                startInfo,
+                request,
+                positionSeconds,
+                mediaPath);
         }
 
         startInfo.ArgumentList.Add("-frames:v");
         startInfo.ArgumentList.Add("1");
 
-        startInfo.ArgumentList.Add("-q:v");
-        startInfo.ArgumentList.Add("2");
+        SetQuality(startInfo, request);
 
         startInfo.ArgumentList.Add("-y");
-        startInfo.ArgumentList.Add(outputPath);
+        startInfo.ArgumentList.Add(outputPath + "." + GetFileExtension(request));
 
         using var process = new Process();
         process.StartInfo = startInfo;
@@ -67,8 +81,9 @@ public class ScreenshotProcessor : IScreenshotProcessor
         }
     }
 
-    private static void WithSubs(
+    private async Task WithSubs(
         ProcessStartInfo startInfo,
+        CaptureRequest request,
         double positionSeconds,
         string mediaPath,
         int? subtitlesIndex,
@@ -80,20 +95,40 @@ public class ScreenshotProcessor : IScreenshotProcessor
             case "ssa":
             case "ass":
             case "subrip": // SRT
-                HandleAsslibSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex, externalSubtitlePath);
+                await HandleAsslibSubs(
+                    startInfo, 
+                    request,
+                    positionSeconds, 
+                    mediaPath, 
+                    subtitlesIndex, 
+                    externalSubtitlePath);
                 break;
             case "pgssub":
-            case "pgs": // Plex
+            case "pgs":
             case "vobsub":
-                HandlePgsSubs(startInfo, positionSeconds, mediaPath, subtitlesIndex);
+                await HandlePgsSubs(
+                    startInfo, 
+                    request,
+                    positionSeconds, 
+                    mediaPath, 
+                    subtitlesIndex);
                 break;
             default:
-                WithoutSubs(startInfo, positionSeconds, mediaPath);
+                await WithoutSubs(
+                    startInfo,
+                    request, 
+                    positionSeconds, 
+                    mediaPath);
                 break;
         }
     }
     
-    private static void HandlePgsSubs(ProcessStartInfo startInfo, double positionSeconds, string mediaPath, int? subtitlesIndex)
+    private async Task HandlePgsSubs(
+        ProcessStartInfo startInfo,
+        CaptureRequest request,
+        double positionSeconds, 
+        string mediaPath,
+        int? subtitlesIndex)
     {
         // Seeking directy to the target timestamp resulted in the subtitles not being rendered.
         // Seek a few seconds before the target first.
@@ -108,17 +143,27 @@ public class ScreenshotProcessor : IScreenshotProcessor
         startInfo.ArgumentList.Add("-i");
         startInfo.ArgumentList.Add(mediaPath);
 
-        startInfo.ArgumentList.Add("-filter_complex");
-        startInfo.ArgumentList.Add(
+        var filter =
             $"[0:v:0][0:s:{subtitlesIndex}]overlay[overlaid];" +
-            $"[overlaid]select='gte(t\\,{positionSeconds.ToString(CultureInfo.InvariantCulture)})'[out]");
+            $"[overlaid]select='gte(t\\,{positionSeconds.ToString(CultureInfo.InvariantCulture)})'[selected]";
+
+        var resolutionFilter = await GetResolutionFilter(request, mediaPath);
+
+        if (!string.IsNullOrEmpty(resolutionFilter))
+            filter += $";[selected]{resolutionFilter}[out]";
+        else
+            filter += ";[selected]null[out]";
+        
+        startInfo.ArgumentList.Add("-filter_complex");
+        startInfo.ArgumentList.Add(filter);
 
         startInfo.ArgumentList.Add("-map");
         startInfo.ArgumentList.Add("[out]");
     }
 
-    private static void HandleAsslibSubs(
+    private async Task HandleAsslibSubs(
         ProcessStartInfo startInfo,
+        CaptureRequest request,
         double positionSeconds,
         string mediaPath,
         int? subtitlesIndex,
@@ -132,13 +177,24 @@ public class ScreenshotProcessor : IScreenshotProcessor
         startInfo.ArgumentList.Add("-i");
         startInfo.ArgumentList.Add(mediaPath);
         
+        var filter = string.IsNullOrEmpty(externalSubtitlePath)
+            ? $"subtitles=filename='{EscapeFfmpegFilterValue(mediaPath)}':si={subtitlesIndex}"
+            : $"subtitles=filename='{EscapeFfmpegFilterValue(externalSubtitlePath)}'";
+        
+        var resolutionFilter = await GetResolutionFilter(request, mediaPath);
+        if (!string.IsNullOrEmpty(resolutionFilter))
+            filter += "," + resolutionFilter;
+        
         startInfo.ArgumentList.Add("-vf");
-        startInfo.ArgumentList.Add(string.IsNullOrEmpty(externalSubtitlePath)
-            ? $"subtitles=filename='{mediaPath}':si={subtitlesIndex}"
-            : $"subtitles=filename='{externalSubtitlePath}'");
+
+        startInfo.ArgumentList.Add(filter);
     }
 
-    private static void WithoutSubs(ProcessStartInfo startInfo, double positionSeconds, string mediaPath)
+    private async Task WithoutSubs(
+        ProcessStartInfo startInfo, 
+        CaptureRequest request,
+        double positionSeconds, 
+        string mediaPath)
     {
         startInfo.ArgumentList.Add("-ss");
         startInfo.ArgumentList.Add(
@@ -147,5 +203,106 @@ public class ScreenshotProcessor : IScreenshotProcessor
 
         startInfo.ArgumentList.Add("-i");
         startInfo.ArgumentList.Add(mediaPath);
+
+        var resolutionFilter = await GetResolutionFilter(request, mediaPath);
+        if (string.IsNullOrEmpty(resolutionFilter)) return;
+        
+        startInfo.ArgumentList.Add("-vf");
+        startInfo.ArgumentList.Add(resolutionFilter);
+    }
+
+    private async Task<string> GetResolutionFilter(CaptureRequest request, string mediaPath)
+    {
+        var height = await GetResolutionHeight(request, mediaPath);
+        return height.HasValue ? $"scale=-2:{height}:flags=lanczos" : string.Empty;
+    }
+
+    private async Task<int?> GetResolutionHeight(CaptureRequest request, string mediaPath)
+    {
+        if (request.Height < 1) return null;
+        
+        var height = request.Height ?? _options.ScreenshotHeight;
+
+        if (height is null or < 1) return null;
+
+        var sourceHeight = await GetVideoHeightAsync(mediaPath);
+        height = Math.Min(sourceHeight, height.Value);
+
+        return height == sourceHeight ? null : height;
+    }
+    
+    private static async Task<int> GetVideoHeightAsync(
+        string mediaPath,
+        CancellationToken cancellationToken = default)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "ffprobe",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        startInfo.ArgumentList.Add("-v");
+        startInfo.ArgumentList.Add("error");
+        startInfo.ArgumentList.Add("-select_streams");
+        startInfo.ArgumentList.Add("v:0");
+        startInfo.ArgumentList.Add("-show_entries");
+        startInfo.ArgumentList.Add("stream=height");
+        startInfo.ArgumentList.Add("-of");
+        startInfo.ArgumentList.Add("default=noprint_wrappers=1:nokey=1");
+        startInfo.ArgumentList.Add(mediaPath);
+
+        using var process = Process.Start(startInfo)
+                            ?? throw new InvalidOperationException("Failed to start ffprobe.");
+
+        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+        await process.WaitForExitAsync(cancellationToken);
+
+        var output = await outputTask;
+        var error = await errorTask;
+
+        if (process.ExitCode != 0 ||
+            !int.TryParse(output.Trim(), out var height))
+        {
+            throw new InvalidOperationException(
+                $"Could not determine video height. {error}");
+        }
+
+        return height;
+    }
+
+    private string GetFileExtension(CaptureRequest request)
+    {
+        return request.Format ?? _options.ScreenshotFileExtension;
+    }
+
+    private void SetQuality(ProcessStartInfo startInfo, CaptureRequest request)
+    {
+        switch (request.Format?.ToLowerInvariant() ?? _options.ScreenshotFileExtension.ToLowerInvariant())
+        {
+            case "jpg":
+            case "jpeg":
+                startInfo.ArgumentList.Add("-q:v");
+                startInfo.ArgumentList.Add(_options.JpgQuality);
+                break;
+
+            case "webp":
+                startInfo.ArgumentList.Add("-quality");
+                startInfo.ArgumentList.Add(_options.WebpQuality);
+                break;
+
+            case "png":
+                startInfo.ArgumentList.Add("-compression_level");
+                startInfo.ArgumentList.Add(_options.PngQuality);
+                break;
+        }
+    }
+    private static string EscapeFfmpegFilterValue(string value)
+    {
+        return value.Replace(@"'", @"'\\\''");
     }
 }
